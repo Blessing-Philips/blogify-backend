@@ -47,7 +47,7 @@ const signUp = async (req, res, next) => {
             }
         )
         const user = await newUser.save();
-        return res.status(200).json({"Signup Successful": user});
+        return res.status(200).json({ "Signup Successful": user });
     }
     catch (error) {
         return res.status(500).json(error.message)
@@ -100,7 +100,7 @@ const signIn = async (req, res, next) => {
             .cookie('access_token', token, {
                 httpOnly: true
             })
-            .json({"Sign in Successful": {rest}});
+            .json({ "Sign in Successful": { rest } });
 
     }
     catch (error) {
@@ -109,8 +109,52 @@ const signIn = async (req, res, next) => {
 
 };
 
+// Google authentication and authorization
+const googleAuth = async (req, res, next) => {
+    try {
+        const { username, email, googlePhotoUrl } = req.body;
+
+        let user = await User.findOne({ email });
+        if (user) {
+            let token = jwt.sign({ id: validUser._id }, process.env.ACCESS_TOKEN);
+            let { password: pass, ...rest } = validUser._doc
+
+            res
+                .status(200)
+                .cookie('access_token', token, {
+                    httpOnly: true
+                })
+                .json({ "Sign in Successful": { rest } });
+
+        } else {
+            let generatedPassword = Math.random().toString(36).slice(-4) + Math.random().toString(36).slice(-4);
+            let hashedPassword = await bcryptjs.hashSync(generatedPassword, 10);
+
+            let newUser = new User({
+                username: username = username.toLowerCase().split(' ').join('') + Math.floor(1000 + Math.random() * 9000),
+                email,
+                password: hashedPassword,
+                profilePicture: googlePhotoUrl
+            })
+            await newUser.save();
+            let token = jwt.sign({ id: newUser._id }, process.env.ACCESS_TOKEN);
+            let { password: pass, ...rest } = newUser._doc
+
+            res
+                .status(200)
+                .cookie('access_token', token, {
+                    httpOnly: true
+                })
+                .json({ "Sign in Successful": { rest } });
+        }
+    }
+    catch (error) {
+        next(error)
+    }
+}
 
 module.exports = {
     signUp,
-    signIn
+    signIn,
+    googleAuth
 };
